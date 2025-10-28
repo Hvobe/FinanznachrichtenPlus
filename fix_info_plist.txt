@@ -1,0 +1,17 @@
+So fügst du CFBundleIconName hinzu:
+
+1. In Xcode: Target → Info Tab
+2. Hover über einen beliebigen Eintrag
+3. Klicke auf das "+" das erscheint
+4. Wähle im Dropdown: "App Icons" → "Primary App Icon Set Name"
+5. Value: AppIcon
+
+Alternative:
+1. Rechtsklick auf einen Eintrag → Add Row
+2. Key: CFBundleIconName
+3. Type: String  
+4. Value: AppIcon
+
+Nach dem Hinzufügen:
+- Product → Clean Build Folder
+- Product → Archive

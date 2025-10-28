@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="1024" height="1024" viewBox="0 0 1024 1024" xmlns="http://www.w3.org/2000/svg">
+  <!-- Red diamond shape rotated 45 degrees -->
+  <rect x="212" y="212" width="600" height="600" rx="60" ry="60" 
+        transform="rotate(45 512 512)" fill="#DC2626"/>
+  
+  <!-- FN text -->
+  <text x="512" y="600" font-family="-apple-system, SF Pro Display, Helvetica Neue, Arial" 
+        font-size="380" font-weight="800" text-anchor="middle" fill="white">FN</text>
+</svg>
