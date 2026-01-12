@@ -97,3 +97,76 @@ struct FNLogoView: View {
         .frame(width: size * 1.2, height: size * 1.2)
     }
 }
+
+// MARK: - Toast Notification Component
+
+/// Toast notification that appears at the top of the screen
+/// Used for temporary success messages (e.g., "Artikel gespeichert!")
+struct DSToast: View {
+    let message: String
+    let icon: String
+    @Binding var isPresented: Bool
+
+    var body: some View {
+        VStack {
+            HStack(spacing: DesignSystem.Spacing.md) {
+                Image(systemName: icon)
+                    .font(.system(size: 20, weight: .semibold))
+                    .foregroundColor(DesignSystem.Colors.primary)
+
+                Text(message)
+                    .font(DesignSystem.Typography.body2)
+                    .foregroundColor(DesignSystem.Colors.onBackground)
+                    .multilineTextAlignment(.leading)
+
+                Spacer()
+            }
+            .padding(DesignSystem.Spacing.lg)
+            .background(
+                RoundedRectangle(cornerRadius: DesignSystem.CornerRadius.lg)
+                    .fill(DesignSystem.Colors.surface)
+                    .shadow(color: Color.black.opacity(0.15), radius: 12, x: 0, y: 4)
+            )
+            .padding(.horizontal, DesignSystem.Spacing.lg)
+            .padding(.top, DesignSystem.Spacing.lg)
+
+            Spacer()
+        }
+        .transition(.move(edge: .top).combined(with: .opacity))
+        .onAppear {
+            // Auto-dismiss after 3 seconds
+            DispatchQueue.main.asyncAfter(deadline: .now() + 3.0) {
+                withAnimation {
+                    isPresented = false
+                }
+            }
+        }
+    }
+}
+
+// MARK: - Toast Modifier
+
+/// ViewModifier to easily show toast notifications
+struct ToastModifier: ViewModifier {
+    @Binding var isPresented: Bool
+    let message: String
+    let icon: String
+
+    func body(content: Content) -> some View {
+        ZStack {
+            content
+
+            if isPresented {
+                DSToast(message: message, icon: icon, isPresented: $isPresented)
+                    .zIndex(999)
+            }
+        }
+    }
+}
+
+extension View {
+    /// Show a toast notification
+    func toast(isPresented: Binding<Bool>, message: String, icon: String = "checkmark.circle.fill") -> some View {
+        modifier(ToastModifier(isPresented: isPresented, message: message, icon: icon))
+    }
+}

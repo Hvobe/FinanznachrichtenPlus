@@ -2,14 +2,14 @@
 //  HomeView.swift
 //  FinanzNachrichten
 //
-//  Hauptansicht der App - Dashboard mit Top-Performern, Terminen und News
-//  Zeigt personalisierte Inhalte basierend auf User-Watchlist und Interessen
+//  Hauptansicht der App - Tab-basierter Feed mit personalisierten News
+//  Neues Design: Top-Tab-Menü + Endlos-Feed statt Sections
 //
 
 import SwiftUI
 
-/// Main dashboard view showing market overview, top performers, schedule, and personalized news
-/// Combines data from user's watchlist with curated financial content
+/// Main dashboard view with horizontal top tabs and infinite scroll feed
+/// Tabs: "Für dich", "Top Nachrichten", and user-selected interest categories
 struct HomeView: View {
 
     // MARK: - Environment Objects
@@ -20,724 +20,226 @@ struct HomeView: View {
 
     // MARK: - State Properties
 
-    @State private var currentMarketIndex = 0
-    @State private var scrollOffset: CGFloat = 0
+    @State private var selectedTab: String = "Für dich"
+    @State private var availableTabs: [String] = []
+    @State private var showBookmarkToast = false
 
     // MARK: - Mock Data Service
 
     private let mockData = MockDataService.shared
 
-    // MARK: - Computed Properties
+    // MARK: - Body
 
-    /// Returns top performing stocks from active watchlist with fallback to mock data
-    /// Ensures at least 5 items are shown for better UX
-    var topPerformers: [WatchlistItem] {
-        guard let activeWatchlist = watchlistService.activeWatchlist else {
-            // Keine aktive Watchlist - zeige Mock-Daten als Fallback
-            return mockData.getTopPerformers()
+    var body: some View {
+        VStack(spacing: 0) {
+            // Header with FN Logo, Bell, Search
+            FNHeaderView()
+
+            // Top Horizontal Tab Bar
+            TopTabBar(tabs: availableTabs, selectedTab: $selectedTab)
+
+            // Main Feed Content (filtered by selected tab)
+            ScrollView {
+                LazyVStack(spacing: DesignSystem.Spacing.md) {
+                    ForEach(0..<30, id: \.self) { index in
+                        feedItem(for: index)
+                            .padding(.horizontal, DesignSystem.Spacing.lg)
+                    }
+                }
+                .padding(.top, DesignSystem.Spacing.md)
+                .padding(.bottom, DesignSystem.Spacing.xxl)
+            }
+            .background(DesignSystem.Colors.background)
         }
-
-        let performers = activeWatchlist.topPerformers
-
-        // Falls Watchlist weniger als 5 Items hat, fülle mit Mock-Daten auf
-        // So sieht die UI immer "voll" aus und User bekommt Inspiration
-        if performers.count < 5 {
-            let remaining = 5 - performers.count
-            return performers + mockData.getTopPerformers().prefix(remaining)
+        .toast(
+            isPresented: $showBookmarkToast,
+            message: "Artikel gespeichert! Wir passen den Feed deinen Interessen nach an.",
+            icon: "bookmark.fill"
+        )
+        .onAppear {
+            loadAvailableTabs()
         }
-
-        return performers
-    }
-
-    /// Market overview data (indices, commodities, forex, crypto)
-    private var marketData: [MarketCard] {
-        mockData.getMarketData()
-    }
-
-    /// Popular securities for quick access
-    private var securities: [Security] {
-        mockData.getSecurities()
-    }
-
-    /// Editorial/featured news items
-    private var editorialNews: [EditorialNewsItem] {
-        mockData.getEditorialNews()
-    }
-
-    /// Watchlist-related news items
-    private var watchlistNews: [WatchlistNewsItem] {
-        mockData.getWatchlistNews()
-    }
-
-    /// Upcoming schedule items (earnings, dividends, holidays)
-    private var scheduleItems: [ScheduleItem] {
-        mockData.getScheduleItems()
-    }
-
-    /// Additional news for main feed
-    private var additionalNews: [AdditionalNewsItem] {
-        mockData.getAdditionalNews()
+        .onReceive(NotificationCenter.default.publisher(for: .userInterestsDidChange)) { _ in
+            // Reload tabs when user interests are updated
+            loadAvailableTabs()
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .bookmarkAdded)) { _ in
+            // Show toast on first bookmark
+            if !bookmarkService.hasUserBookmarkedBefore() {
+                withAnimation {
+                    showBookmarkToast = true
+                }
+                bookmarkService.markFirstBookmarkSeen()
+            }
+        }
     }
 
     // MARK: - Helper Functions
 
-    /// Returns sample news title for infinite scroll
-    /// - Parameter index: Index for cyclic title selection
-    private func getSampleNewsTitle(_ index: Int) -> String {
-        mockData.getNewsTitle(for: index)
-    }
+    /// Load available tabs based on user interests
+    /// Always includes "Für dich" and "Top Nachrichten", then adds user-selected interests
+    private func loadAvailableTabs() {
+        let userInterests = UserDefaults.standard.stringArray(forKey: "userInterests") ?? []
 
-    /// Returns sample news category
-    /// - Parameter index: Index for cyclic category selection
-    private func getSampleCategory(_ index: Int) -> String {
-        mockData.getNewsCategory(for: index)
-    }
+        // Default tabs + user interests
+        var tabs = ["Für dich", "Top Nachrichten"]
 
-    // MARK: - Body
+        // Add interest categories (map to German names)
+        let interestTabMapping: [String: String] = [
+            "Aktien": "Aktien",
+            "ETFs": "ETFs",
+            "Krypto": "Krypto",
+            "Rohstoffe": "Rohstoffe",
+            "Devisen": "Devisen",
+            "Anleihen": "Anleihen",
+            "Optionen": "Optionen",
+            "Futures": "Futures",
+            "Technik & Wissenschaft": "Technik",
+            "Finanzen": "Finanzen"
+        ]
 
-    var body: some View {
-        ScrollView {
-            VStack(spacing: 0) {
-                // Header with FN Logo
-                FNHeaderView()
-                
-                // Top Performers from Watchlist
-                VStack(alignment: .leading, spacing: DesignSystem.Spacing.Section.withinSection) {
-                    Text("Deine Top Performer heute")
-                        .font(DesignSystem.Typography.title2)
-                        .foregroundColor(DesignSystem.Colors.onBackground)
-                        .padding(.horizontal, DesignSystem.Spacing.Page.horizontal)
-                    
-                    ScrollView(.horizontal, showsIndicators: false) {
-                        HStack(spacing: DesignSystem.Spacing.md) {
-                            // Show top 5 performers from watchlist sorted by performance
-                            ForEach(topPerformers.prefix(5), id: \.symbol) { item in
-                                WatchlistTeaserCard(
-                                    symbol: item.symbol,
-                                    name: item.name,
-                                    price: item.price,
-                                    change: item.changePercent,
-                                    isPositive: item.isPositive
-                                )
-                            }
-                        }
-                        .padding(.horizontal, DesignSystem.Spacing.Page.horizontal)
-                        .padding(.vertical, DesignSystem.Spacing.sm)
-                    }
-                    .scrollClipDisabled()
-                }
-                .padding(.top, DesignSystem.Spacing.lg)
-                .padding(.bottom, DesignSystem.Spacing.lg)
-                .zIndex(1)
-                
-                // Schedule/Calendar Section
-                VStack(alignment: .leading, spacing: DesignSystem.Spacing.Section.withinSection) {
-                    Text("Wichtige Termine diese Woche")
-                        .font(DesignSystem.Typography.title2)
-                        .foregroundColor(DesignSystem.Colors.onBackground)
-                        .padding(.horizontal, DesignSystem.Spacing.Page.horizontal)
-                    
-                    ScrollView(.horizontal, showsIndicators: false) {
-                        HStack(spacing: DesignSystem.Spacing.Cards.gap) {
-                            ForEach(scheduleItems, id: \.title) { item in
-                                DSCard(
-                                    backgroundColor: DesignSystem.Colors.cardBackground,
-                                    borderColor: DesignSystem.Colors.border,
-                                    cornerRadius: DesignSystem.CornerRadius.lg,
-                                    padding: DesignSystem.Spacing.md,
-                                    hasShadow: true
-                                ) {
-                                    VStack(alignment: .leading, spacing: DesignSystem.Spacing.xs) {
-                                        HStack {
-                                            Text(item.date)
-                                                .font(DesignSystem.Typography.caption2)
-                                                .foregroundColor(DesignSystem.Colors.secondary)
-                                            
-                                            Spacer()
-                                            
-                                            Text(item.time)
-                                                .font(DesignSystem.Typography.caption1)
-                                                .foregroundColor(DesignSystem.Colors.onCard)
-                                                .fontWeight(.semibold)
-                                        }
-                                        
-                                        Spacer()
-                                        
-                                        Text(item.title)
-                                            .font(DesignSystem.Typography.caption1)
-                                            .foregroundColor(DesignSystem.Colors.onCard)
-                                            .fontWeight(.medium)
-                                            .lineLimit(2)
-                                            .fixedSize(horizontal: false, vertical: true)
-                                        
-                                        Text(item.type.displayName)
-                                            .font(.system(size: 10))
-                                            .foregroundColor(item.type.color.opacity(0.8))
-                                            .fontWeight(.medium)
-                                    }
-                                }
-                                .frame(width: 150, height: 80)
-                            }
-                        }
-                        .padding(.horizontal, DesignSystem.Spacing.Page.horizontal)
-                        .padding(.vertical, DesignSystem.Spacing.sm)
-                    }
-                    .scrollClipDisabled()
-                }
-                .padding(.bottom, DesignSystem.Spacing.lg)
-                
-                // Andere Leser interessieren sich für Section
-                VStack(alignment: .leading, spacing: DesignSystem.Spacing.Section.withinSection) {
-                    Text("Für dich")
-                        .font(DesignSystem.Typography.title2)
-                        .foregroundColor(DesignSystem.Colors.onBackground)
-                        .padding(.horizontal, DesignSystem.Spacing.Page.horizontal)
-                    
-                    ScrollView(.horizontal, showsIndicators: false) {
-                        HStack(spacing: DesignSystem.Spacing.Cards.gap) {
-                            ForEach(Array(getPopularNews().enumerated()), id: \.offset) { index, news in
-                                NewsCardLargeWithRating(
-                                    title: news.title,
-                                    category: news.category,
-                                    time: news.time,
-                                    rating: news.rating,
-                                    readerCount: news.readerCount,
-                                    hasImage: true,
-                                    showChart: shouldShowChart(for: news.category, index: index)
-                                )
-                                .frame(width: 320)
-                            }
-                        }
-                        .padding(.horizontal, DesignSystem.Spacing.Page.horizontal)
-                        .padding(.vertical, DesignSystem.Spacing.Cards.shadowPadding)
-                    }
-                    .scrollClipDisabled()
-                }
-                .padding(.bottom, DesignSystem.Spacing.lg)
-                
-                // Personalized Headlines Section based on Interests
-                if !getPersonalizedHeadlines().isEmpty {
-                    VStack(alignment: .leading, spacing: DesignSystem.Spacing.Section.withinSection) {
-                        ForEach(getPersonalizedHeadlines(), id: \.self) { interest in
-                            VStack(alignment: .leading, spacing: DesignSystem.Spacing.md) {
-                                Text(interest)
-                                    .font(DesignSystem.Typography.title2)
-                                    .foregroundColor(DesignSystem.Colors.onBackground)
-                                    .padding(.horizontal, DesignSystem.Spacing.Page.horizontal)
-                                
-                                ScrollView(.horizontal, showsIndicators: false) {
-                                    HStack(spacing: DesignSystem.Spacing.Cards.gap) {
-                                        ForEach(Array(getNewsForInterest(interest).enumerated()), id: \.offset) { index, news in
-                                            NewsCardLargeWithRating(
-                                                title: news.title,
-                                                category: news.category,
-                                                time: news.time,
-                                                rating: Double.random(in: 3.5...5.0),
-                                                readerCount: Int.random(in: 500...5000),
-                                                hasImage: true,
-                                                showChart: shouldShowChart(for: news.category, index: index)
-                                            )
-                                            .frame(width: 320)
-                                        }
-                                    }
-                                    .padding(.horizontal, DesignSystem.Spacing.Page.horizontal)
-                                    .padding(.vertical, DesignSystem.Spacing.Cards.shadowPadding)
-                                }
-                                .scrollClipDisabled()
-                            }
-                            .padding(.bottom, DesignSystem.Spacing.lg)
-                        }
-                    }
-                }
-                
-                // Das interessiert andere Leser Section
-                VStack(alignment: .leading, spacing: DesignSystem.Spacing.Section.withinSection) {
-                    Text("Das interessiert andere Leser")
-                        .font(DesignSystem.Typography.title2)
-                        .foregroundColor(DesignSystem.Colors.onBackground)
-                        .padding(.horizontal, DesignSystem.Spacing.Page.horizontal)
-                    
-                    ScrollView(.horizontal, showsIndicators: false) {
-                        HStack(spacing: DesignSystem.Spacing.Cards.gap) {
-                            ForEach(Array(getOtherUsersInterests().enumerated()), id: \.offset) { index, news in
-                                NewsCardLargeWithRating(
-                                    title: news.title,
-                                    category: news.category,
-                                    time: news.time,
-                                    rating: news.rating,
-                                    readerCount: news.readerCount,
-                                    hasImage: true,
-                                    showChart: shouldShowChart(for: news.category, index: index)
-                                )
-                                .frame(width: 320)
-                            }
-                        }
-                        .padding(.horizontal, DesignSystem.Spacing.Page.horizontal)
-                        .padding(.vertical, DesignSystem.Spacing.Cards.shadowPadding)
-                    }
-                    .scrollClipDisabled()
-                }
-                .padding(.bottom, DesignSystem.Spacing.lg)
-                
-                // News Section
-                VStack(alignment: .leading, spacing: DesignSystem.Spacing.Section.withinSection) {
-                    Text("Nachrichten für dich")
-                        .font(DesignSystem.Typography.title2)
-                        .foregroundColor(DesignSystem.Colors.onBackground)
-                    
-                    VStack(spacing: DesignSystem.Spacing.lg) {
-                        // First news as large card
-                        if let firstNews = editorialNews.first {
-                            NewsCardLarge(
-                                title: firstNews.title,
-                                category: firstNews.category,
-                                time: firstNews.time
-                            )
-                        }
-                        
-                        // Mix of news, video, and podcast cards - infinite feed
-                        ForEach(0..<30, id: \.self) { index in
-                            // Determine content type based on index
-                            let contentType = index % 8
-                            
-                            switch contentType {
-                            case 0, 1, 3, 5: // News cards with images (50%)
-                                NewsCardLarge(
-                                    title: getSampleNewsTitle(index),
-                                    category: getSampleCategory(index),
-                                    time: "vor \(index + 2) Stunden"
-                                )
-                            case 2, 6: // News cards without images (25%)
-                                NewsCardCompact(
-                                    title: getSampleNewsTitle(index),
-                                    category: getSampleCategory(index),
-                                    time: "vor \(index + 2) Stunden"
-                                )
-                            case 4: // Video cards (12.5%)
-                                VideoCard(
-                                    title: getSampleVideoTitle(index),
-                                    channel: getSampleVideoChannel(index),
-                                    duration: getSampleVideoDuration(index),
-                                    viewCount: getSampleVideoViewCount(index),
-                                    thumbnailType: getSampleVideoType(index)
-                                )
-                            case 7: // Podcast cards (12.5%)
-                                PodcastCard(
-                                    title: getSamplePodcastTitle(index),
-                                    podcast: getSamplePodcastName(index),
-                                    episode: "\(index + 1)",
-                                    duration: getSamplePodcastDuration(index),
-                                    releaseDate: getSamplePodcastDate(index)
-                                )
-                            default:
-                                NewsCardLarge(
-                                    title: getSampleNewsTitle(index),
-                                    category: getSampleCategory(index),
-                                    time: "vor \(index + 2) Stunden"
-                                )
-                            }
-                            
-                            // Ad placeholder every 5 items
-                            if (index + 1) % 5 == 0 {
-                                RoundedRectangle(cornerRadius: DesignSystem.CornerRadius.lg)
-                                    .fill(DesignSystem.Colors.surface)
-                                    .frame(height: 80)
-                                    .overlay(
-                                        Text("Werbeplatz")
-                                            .font(DesignSystem.Typography.body2)
-                                            .foregroundColor(DesignSystem.Colors.secondary)
-                                    )
-                            }
-                        }
-                    }
-                }
-                .padding(.horizontal, DesignSystem.Spacing.Page.horizontal)
-                .padding(.top, DesignSystem.Spacing.lg)
-                .padding(.bottom, DesignSystem.Spacing.Page.bottom) // Space for bottom navigation
+        for interest in userInterests {
+            if let tabName = interestTabMapping[interest] {
+                tabs.append(tabName)
             }
         }
-        .background(DesignSystem.Colors.background)
+
+        // Remove duplicates and update
+        availableTabs = Array(Set(tabs)).sorted { tab1, tab2 in
+            // Keep "Für dich" first, then "Top Nachrichten", then alphabetical
+            if tab1 == "Für dich" { return true }
+            if tab2 == "Für dich" { return false }
+            if tab1 == "Top Nachrichten" { return true }
+            if tab2 == "Top Nachrichten" { return false }
+            return tab1 < tab2
+        }
+
+        // Set initial selected tab
+        if selectedTab.isEmpty || !availableTabs.contains(selectedTab) {
+            selectedTab = "Für dich"
+        }
     }
-    
-    // Get personalized news based on user interests
-    private func getPersonalizedNews() -> [EditorialNewsItem] {
-        // Get user interests from UserDefaults
-        let userInterests = UserDefaults.standard.stringArray(forKey: "userInterests") ?? []
-        
-        // All available news items
-        let allNews = [
-            EditorialNewsItem(
-                title: "KI-Revolution: Diese Aktien profitieren am meisten",
-                category: "Aktien",
-                time: "vor 30 Minuten",
-                imageName: "editorial_1"
-            ),
-            EditorialNewsItem(
-                title: "Krypto-Analyse: Bitcoin vor dem nächsten Sprung?",
-                category: "Krypto",
-                time: "vor 1 Stunde",
-                imageName: "editorial_2"
-            ),
-            EditorialNewsItem(
-                title: "ETF-Empfehlung: Die besten Dividenden-ETFs 2025",
-                category: "ETFs",
-                time: "vor 2 Stunden",
-                imageName: "editorial_3"
-            ),
-            EditorialNewsItem(
-                title: "Rohstoff-Boom: Gold und Silber im Aufwind",
-                category: "Rohstoffe",
-                time: "vor 3 Stunden",
-                imageName: "editorial_4"
-            ),
-            EditorialNewsItem(
-                title: "Tech-Giganten: Apple vs. Microsoft - Wer gewinnt?",
-                category: "Aktien",
-                time: "vor 4 Stunden",
-                imageName: "editorial_5"
-            ),
-            EditorialNewsItem(
-                title: "EUR/USD: Währungspaar vor Wendepunkt",
-                category: "Devisen",
-                time: "vor 5 Stunden",
-                imageName: "editorial_6"
-            ),
-            EditorialNewsItem(
-                title: "Staatsanleihen: Renditen im Fokus",
-                category: "Anleihen",
-                time: "vor 6 Stunden",
-                imageName: "editorial_7"
-            ),
-            EditorialNewsItem(
-                title: "Optionsstrategien für volatile Märkte",
-                category: "Optionen",
-                time: "vor 7 Stunden",
-                imageName: "editorial_8"
-            ),
-            EditorialNewsItem(
-                title: "DAX-Future: Technische Analyse",
-                category: "Futures",
-                time: "vor 8 Stunden",
-                imageName: "editorial_9"
+
+    /// Generate feed item for given index
+    /// Returns different card types: NewsCardLarge (50%), NewsCardCompact (25%), VideoCard (12.5%), PodcastCard (12.5%)
+    @ViewBuilder
+    private func feedItem(for index: Int) -> some View {
+        let cardType = index % 8
+        let category = getFilteredCategory(for: index)
+        let articleId = generateArticleId(index: index, category: category)
+
+        switch cardType {
+        case 0, 2, 4, 6:
+            // 50% - Large news cards with images
+            NewsCardLarge(
+                title: getFilteredNewsTitle(for: index),
+                category: category,
+                time: "vor \(Int.random(in: 1...240)) Minuten",
+                articleId: articleId
             )
-        ]
-        
-        // Filter news based on user interests
-        if userInterests.isEmpty {
-            // If no interests selected, show a mix of everything
-            return Array(allNews.prefix(5))
-        } else {
-            // Filter news by matching categories to user interests
-            let filteredNews = allNews.filter { news in
-                userInterests.contains(news.category)
-            }
-            
-            // If we don't have enough filtered news, add some general news
-            if filteredNews.count < 5 {
-                var result = filteredNews
-                let remainingNews = allNews.filter { news in
-                    !filteredNews.contains { $0.title == news.title }
-                }
-                result.append(contentsOf: remainingNews.prefix(5 - filteredNews.count))
-                return result
-            }
-            
-            return Array(filteredNews.prefix(5))
+
+        case 1, 5:
+            // 25% - Compact news cards without images
+            NewsCardCompact(
+                title: getFilteredNewsTitle(for: index),
+                category: category,
+                time: "vor \(Int.random(in: 1...240)) Minuten",
+                articleId: articleId
+            )
+
+        case 3:
+            // 12.5% - Video-themed news
+            NewsCardLarge(
+                title: "🎥 \(getFilteredNewsTitle(for: index))",
+                category: category,
+                time: "vor \(Int.random(in: 1...180)) Minuten",
+                articleId: articleId
+            )
+
+        case 7:
+            // 12.5% - Podcast-themed news
+            NewsCardLarge(
+                title: "🎙️ \(getFilteredNewsTitle(for: index))",
+                category: category,
+                time: "vor \(Int.random(in: 30...300)) Minuten",
+                articleId: articleId
+            )
+
+        default:
+            EmptyView()
         }
     }
-    
-    // Get personalized headlines based on user interests
-    private func getPersonalizedHeadlines() -> [String] {
-        let userInterests = UserDefaults.standard.stringArray(forKey: "userInterests") ?? []
-        // Return only the first 3 interests to avoid too many sections
-        return Array(userInterests.prefix(3))
+
+    /// Generate unique article ID based on index, category, and selected tab
+    /// Format: "article_{tab}_{index}_{category}"
+    private func generateArticleId(index: Int, category: String) -> String {
+        return "article_\(selectedTab)_\(index)_\(category)"
     }
-    
-    // Get news for a specific interest category
-    private func getNewsForInterest(_ interest: String) -> [EditorialNewsItem] {
-        let newsItems: [String: [EditorialNewsItem]] = [
-            "Aktien": [
-                EditorialNewsItem(
-                    title: "Apple erreicht neues Allzeithoch nach KI-Ankündigung",
-                    category: "Aktien",
-                    time: "vor 15 Minuten",
-                    imageName: "news_1"
-                ),
-                EditorialNewsItem(
-                    title: "Deutsche Bank übertrifft Gewinnerwartungen deutlich",
-                    category: "Aktien",
-                    time: "vor 45 Minuten",
-                    imageName: "news_2"
-                ),
-                EditorialNewsItem(
-                    title: "Tesla-Aktie unter Druck nach Produktionszahlen",
-                    category: "Aktien",
-                    time: "vor 1 Stunde",
-                    imageName: "news_3"
-                )
-            ],
-            "ETFs": [
-                EditorialNewsItem(
-                    title: "Neue Rekordmittelzuflüsse in MSCI World ETF",
-                    category: "ETFs",
-                    time: "vor 20 Minuten",
-                    imageName: "etf_1"
-                ),
-                EditorialNewsItem(
-                    title: "Dividenden-ETFs: Die besten Performer 2025",
-                    category: "ETFs",
-                    time: "vor 35 Minuten",
-                    imageName: "etf_2"
-                ),
-                EditorialNewsItem(
-                    title: "Themen-ETFs: KI und Robotik im Fokus",
-                    category: "ETFs",
-                    time: "vor 50 Minuten",
-                    imageName: "etf_3"
-                )
-            ],
-            "Krypto": [
-                EditorialNewsItem(
-                    title: "Bitcoin durchbricht 100.000 Dollar Marke",
-                    category: "Krypto",
-                    time: "vor 10 Minuten",
-                    imageName: "crypto_1"
-                ),
-                EditorialNewsItem(
-                    title: "Ethereum Update: Staking-Renditen steigen",
-                    category: "Krypto",
-                    time: "vor 25 Minuten",
-                    imageName: "crypto_2"
-                ),
-                EditorialNewsItem(
-                    title: "Neue Regulierung für Krypto-Börsen in der EU",
-                    category: "Krypto",
-                    time: "vor 40 Minuten",
-                    imageName: "crypto_3"
-                )
-            ],
-            "Rohstoffe": [
-                EditorialNewsItem(
-                    title: "Goldpreis steigt auf 6-Monats-Hoch",
-                    category: "Rohstoffe",
-                    time: "vor 30 Minuten",
-                    imageName: "commodity_1"
-                ),
-                EditorialNewsItem(
-                    title: "Ölpreise volatil nach OPEC-Entscheidung",
-                    category: "Rohstoffe",
-                    time: "vor 45 Minuten",
-                    imageName: "commodity_2"
-                ),
-                EditorialNewsItem(
-                    title: "Kupfer: Nachfrage aus China steigt",
-                    category: "Rohstoffe",
-                    time: "vor 1 Stunde",
-                    imageName: "commodity_3"
-                )
-            ],
-            "Devisen": [
-                EditorialNewsItem(
-                    title: "EUR/USD: EZB-Entscheidung im Fokus",
-                    category: "Devisen",
-                    time: "vor 15 Minuten",
-                    imageName: "forex_1"
-                ),
-                EditorialNewsItem(
-                    title: "Schweizer Franken bleibt sicherer Hafen",
-                    category: "Devisen",
-                    time: "vor 30 Minuten",
-                    imageName: "forex_2"
-                ),
-                EditorialNewsItem(
-                    title: "Dollar schwächelt vor Fed-Sitzung",
-                    category: "Devisen",
-                    time: "vor 45 Minuten",
-                    imageName: "forex_3"
-                )
-            ],
-            "Anleihen": [
-                EditorialNewsItem(
-                    title: "Bundesanleihen: Renditen steigen weiter",
-                    category: "Anleihen",
-                    time: "vor 20 Minuten",
-                    imageName: "bond_1"
-                ),
-                EditorialNewsItem(
-                    title: "Unternehmensanleihen: Spreads verengen sich",
-                    category: "Anleihen",
-                    time: "vor 35 Minuten",
-                    imageName: "bond_2"
-                ),
-                EditorialNewsItem(
-                    title: "Green Bonds erreichen Rekordvolumen",
-                    category: "Anleihen",
-                    time: "vor 50 Minuten",
-                    imageName: "bond_3"
-                )
-            ],
-            "Optionen": [
-                EditorialNewsItem(
-                    title: "Volatilität steigt: Optionsprämien attraktiv",
-                    category: "Optionen",
-                    time: "vor 25 Minuten",
-                    imageName: "option_1"
-                ),
-                EditorialNewsItem(
-                    title: "Put-Call-Ratio signalisiert Vorsicht",
-                    category: "Optionen",
-                    time: "vor 40 Minuten",
-                    imageName: "option_2"
-                ),
-                EditorialNewsItem(
-                    title: "Covered Calls: Zusatzeinkommen generieren",
-                    category: "Optionen",
-                    time: "vor 55 Minuten",
-                    imageName: "option_3"
-                )
-            ],
-            "Futures": [
-                EditorialNewsItem(
-                    title: "DAX-Future: Widerstand bei 19.500 Punkten",
-                    category: "Futures",
-                    time: "vor 15 Minuten",
-                    imageName: "future_1"
-                ),
-                EditorialNewsItem(
-                    title: "S&P 500 Future deutet auf starken Start",
-                    category: "Futures",
-                    time: "vor 30 Minuten",
-                    imageName: "future_2"
-                ),
-                EditorialNewsItem(
-                    title: "Weizen-Futures steigen nach Erntebericht",
-                    category: "Futures",
-                    time: "vor 45 Minuten",
-                    imageName: "future_3"
-                )
-            ]
+
+    /// Get news title filtered by selected tab
+    /// Uses tab-based seed for consistent but different order per tab
+    private func getFilteredNewsTitle(for index: Int) -> String {
+        // For now, use mock data - will be replaced with real API filtering
+        let allTitles = [
+            "Apple erreicht neues Allzeithoch nach KI-Ankündigung",
+            "Deutsche Bank übertrifft Gewinnerwartungen",
+            "Tesla-Aktie unter Druck nach Produktionszahlen",
+            "Bitcoin durchbricht 100.000 Dollar Marke",
+            "EZB senkt Leitzins erneut - Märkte reagieren positiv",
+            "Nvidia präsentiert neue KI-Chips",
+            "DAX schließt mit neuem Rekord",
+            "Gold erreicht Allzeithoch",
+            "Microsoft kündigt neue Cloud-Services an",
+            "Ölpreis fällt auf Jahrestief",
+            "Alphabet investiert in Quantencomputing",
+            "Immobilienmarkt zeigt erste Erholungszeichen",
+            "Amazon expandiert im deutschen Markt",
+            "Europäische Tech-Aktien im Aufwind",
+            "Neue Dividendenrekorde bei DAX-Konzernen"
         ]
-        
-        return newsItems[interest] ?? []
+
+        // Create seed based on tab name for consistent shuffling
+        let tabSeed = selectedTab.hash
+        let shuffledIndex = (index + tabSeed) % allTitles.count
+
+        return allTitles[abs(shuffledIndex)]
     }
-    
-    // Determine if we should show a chart for this news item
-    private func shouldShowChart(for category: String, index: Int) -> Bool {
-        // Alternate between chart and image, with preference for charts on financial categories
-        let financialCategories = ["Aktien", "ETFs", "Krypto", "Rohstoffe", "Devisen", "Futures"]
-        let isFinancialCategory = financialCategories.contains(category)
-        
-        // If it's a financial category, show more charts (2 out of 3)
-        if isFinancialCategory {
-            return index % 3 != 2
-        } else {
-            // For other categories, alternate evenly
-            return index % 2 == 0
+
+    /// Get category filtered by selected tab
+    private func getFilteredCategory(for index: Int) -> String {
+        // Filter by selected tab
+        switch selectedTab {
+        case "Für dich":
+            // Mixed content based on user interests
+            let userInterests = UserDefaults.standard.stringArray(forKey: "userInterests") ?? ["Aktien"]
+            return userInterests[index % userInterests.count]
+
+        case "Top Nachrichten":
+            // General news categories
+            let categories = ["Aktien", "Märkte", "Wirtschaft", "Unternehmen"]
+            return categories[index % categories.count]
+
+        default:
+            // Return selected tab as category
+            return selectedTab
         }
     }
-    
-    // Get popular news based on reader count
-    private func getPopularNews() -> [(title: String, category: String, time: String, rating: Double, readerCount: Int)] {
-        return [
-            (title: "DAX schließt auf Rekordhoch - Anleger optimistisch", category: "Märkte", time: "vor 1 Stunde", rating: 4.8, readerCount: 15234),
-            (title: "Tesla übertrifft Erwartungen - Aktie springt 12%", category: "Aktien", time: "vor 2 Stunden", rating: 4.6, readerCount: 12456),
-            (title: "Bitcoin-Rally setzt sich fort - 105.000 USD in Sicht", category: "Krypto", time: "vor 3 Stunden", rating: 4.5, readerCount: 10234),
-            (title: "Neue EU-Regulierung trifft Tech-Giganten hart", category: "Regulierung", time: "vor 4 Stunden", rating: 4.2, readerCount: 8976),
-            (title: "Goldpreis erreicht Jahreshoch - Sichere Häfen gefragt", category: "Rohstoffe", time: "vor 5 Stunden", rating: 4.4, readerCount: 7654)
-        ]
-    }
-    
-    // Get what other users are interested in
-    private func getOtherUsersInterests() -> [(title: String, category: String, time: String, rating: Double, readerCount: Int)] {
-        return [
-            (title: "Inflation sinkt überraschend - EZB unter Zugzwang", category: "Wirtschaft", time: "vor 30 Minuten", rating: 4.7, readerCount: 18432),
-            (title: "Apple Vision Pro 2: Neue Details durchgesickert", category: "Technologie", time: "vor 1 Stunde", rating: 4.5, readerCount: 14567),
-            (title: "Lithium-Aktien im Aufwind - E-Auto Boom", category: "Rohstoffe", time: "vor 2 Stunden", rating: 4.3, readerCount: 11234),
-            (title: "Dividendenkönige 2025: Diese Aktien zahlen", category: "Dividenden", time: "vor 3 Stunden", rating: 4.6, readerCount: 9876),
-            (title: "KI-ETFs: Die besten Fonds im Vergleich", category: "ETFs", time: "vor 4 Stunden", rating: 4.4, readerCount: 8543)
-        ]
-    }
-    
-    // MARK: - Video Content Helpers
-    
-    private func getSampleVideoTitle(_ index: Int) -> String {
-        let titles = [
-            "DAX-Analyse: Wird die 20.000 geknackt?",
-            "Interview: Warren Buffett's beste Tipps für 2025",
-            "Breaking: EZB senkt überraschend Leitzins",
-            "Tesla Cybertruck - Revolution oder Flop?",
-            "Bitcoin Prognose: 150.000 USD möglich?",
-            "Immobilien-Crash 2025? Experten warnen",
-            "Apple vs. Samsung: Der große Vergleich",
-            "Gold als Krisenwährung - Jetzt einsteigen?",
-            "Die besten Dividendenaktien für 2025",
-            "Nvidia: KI-König oder überbewertete Blase?"
-        ]
-        return titles[index % titles.count]
-    }
-    
-    private func getSampleVideoChannel(_ index: Int) -> String {
-        let channels = [
-            "FinanzNachrichten TV",
-            "Börse Stuttgart TV",
-            "Der Aktionär TV",
-            "wallstreet:online TV",
-            "n-tv Börse"
-        ]
-        return channels[index % channels.count]
-    }
-    
-    private func getSampleVideoDuration(_ index: Int) -> String {
-        let durations = ["2:45", "5:12", "8:30", "12:15", "3:58", "15:42", "6:33", "4:20"]
-        return durations[index % durations.count]
-    }
-    
-    private func getSampleVideoViewCount(_ index: Int) -> String {
-        let counts = ["1.2K", "5.4K", "12K", "834", "2.8K", "15K", "3.1K", "987"]
-        return counts[index % counts.count]
-    }
-    
-    private func getSampleVideoType(_ index: Int) -> VideoCard.ThumbnailType {
-        let types: [VideoCard.ThumbnailType] = [.marketAnalysis, .interview, .news]
-        return types[index % types.count]
-    }
-    
-    // MARK: - Podcast Content Helpers
-    
-    private func getSamplePodcastTitle(_ index: Int) -> String {
-        let titles = [
-            "Die Börsenwoche: DAX, Dow Jones & Co.",
-            "Value Investing: Die Buffett-Strategie",
-            "Krypto Update: Bitcoin, Ethereum und mehr",
-            "ETF-Sparplan: So geht's richtig",
-            "Rohstoffe im Fokus: Gold, Öl und Kupfer",
-            "Tech-Aktien: Chancen und Risiken",
-            "Immobilien als Kapitalanlage",
-            "Trading-Psychologie: Emotionen kontrollieren",
-            "Nachhaltiges Investieren: ESG im Trend",
-            "Die Zinswende und ihre Folgen"
-        ]
-        return titles[index % titles.count]
-    }
-    
-    private func getSamplePodcastName(_ index: Int) -> String {
-        let names = [
-            "Der Börsen-Podcast",
-            "Finanzfluss Podcast",
-            "Aktien mit Kopf",
-            "Der Finanzwesir rockt",
-            "Madame Moneypenny"
-        ]
-        return names[index % names.count]
-    }
-    
-    private func getSamplePodcastDuration(_ index: Int) -> String {
-        let durations = ["32:45", "45:12", "28:30", "52:15", "38:58", "41:42", "36:33", "44:20"]
-        return durations[index % durations.count]
-    }
-    
-    private func getSamplePodcastDate(_ index: Int) -> String {
-        let dates = ["Heute", "Gestern", "vor 2 Tagen", "vor 3 Tagen", "vor 4 Tagen", "vor 5 Tagen", "vor 1 Woche"]
-        return dates[min(index, dates.count - 1)]
+}
+
+// MARK: - Notification Names
+
+extension Notification.Name {
+    /// Posted when a bookmark is added (for first-time toast)
+    static let bookmarkAdded = Notification.Name("bookmarkAdded")
+}
+
+// MARK: - Preview
+
+struct HomeView_Previews: PreviewProvider {
+    static var previews: some View {
+        HomeView()
+            .environmentObject(BookmarkService())
+            .environmentObject(NotificationService())
+            .environmentObject(WatchlistService.shared)
     }
 }

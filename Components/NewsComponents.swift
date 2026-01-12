@@ -97,7 +97,9 @@ struct NewsCardCompact: View {
     let title: String
     let category: String
     let time: String
+    let articleId: String
     @State private var showingDetail = false
+    @EnvironmentObject var bookmarkService: BookmarkService
     
     private var sampleArticle: NewsArticle {
         NewsArticle(
@@ -133,16 +135,39 @@ struct NewsCardCompact: View {
                         Text(category)
                             .font(DesignSystem.Typography.caption1)
                             .foregroundColor(DesignSystem.Colors.primary)
-                        
+
                         Text("•")
                             .font(DesignSystem.Typography.caption1)
                             .foregroundColor(DesignSystem.Colors.tertiary)
-                        
+
                         Text(time)
                             .font(DesignSystem.Typography.caption1)
                             .foregroundColor(DesignSystem.Colors.secondary)
-                        
+
                         Spacer()
+
+                        // Bookmark button
+                        Button(action: {
+                            let wasBookmarked = bookmarkService.isBookmarked(articleId)
+                            bookmarkService.toggleBookmark(articleId)
+
+                            // Post notification when bookmark is added
+                            if !wasBookmarked {
+                                NotificationCenter.default.post(name: .bookmarkAdded, object: nil)
+                            }
+
+                            // Haptic feedback
+                            if bookmarkService.isBookmarked(articleId) {
+                                UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                            } else {
+                                UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+                            }
+                        }) {
+                            Image(systemName: bookmarkService.isBookmarked(articleId) ? "bookmark.fill" : "bookmark")
+                                .font(.system(size: 14, weight: .semibold))
+                                .foregroundColor(bookmarkService.isBookmarked(articleId) ? DesignSystem.Colors.primary : DesignSystem.Colors.secondary)
+                        }
+                        .buttonStyle(PlainButtonStyle())
                     }
                 }
             }
@@ -164,8 +189,10 @@ struct NewsCardLarge: View {
     let title: String
     let category: String
     let time: String
+    let articleId: String
     let hasImage: Bool = true
     @State private var showingDetail = false
+    @EnvironmentObject var bookmarkService: BookmarkService
     
     private var sampleArticle: NewsArticle {
         NewsArticle(
@@ -204,7 +231,7 @@ struct NewsCardLarge: View {
                             endPoint: .bottomTrailing
                         )
                         .frame(height: 180)
-                        
+
                         // Code-like overlay
                         VStack(alignment: .leading, spacing: 4) {
                             ForEach(0..<8) { i in
@@ -227,7 +254,7 @@ struct NewsCardLarge: View {
                     }
                     .clipped()
                 }
-                
+
                 // Content
                 VStack(alignment: .leading, spacing: DesignSystem.Spacing.md) {
                     Text(title)
@@ -235,7 +262,7 @@ struct NewsCardLarge: View {
                         .foregroundColor(DesignSystem.Colors.onCard)
                         .lineLimit(3)
                         .fixedSize(horizontal: false, vertical: true)
-                    
+
                     HStack {
                         Text(category)
                             .font(DesignSystem.Typography.caption1)
@@ -244,12 +271,35 @@ struct NewsCardLarge: View {
                             .padding(.vertical, DesignSystem.Spacing.xs)
                             .background(DesignSystem.Colors.primary.opacity(0.1))
                             .cornerRadius(DesignSystem.CornerRadius.sm)
-                        
+
                         Spacer()
-                        
+
                         Text(time)
                             .font(DesignSystem.Typography.caption2)
                             .foregroundColor(DesignSystem.Colors.secondary)
+
+                        // Bookmark button
+                        Button(action: {
+                            let wasBookmarked = bookmarkService.isBookmarked(articleId)
+                            bookmarkService.toggleBookmark(articleId)
+
+                            // Post notification when bookmark is added
+                            if !wasBookmarked {
+                                NotificationCenter.default.post(name: .bookmarkAdded, object: nil)
+                            }
+
+                            // Haptic feedback
+                            if bookmarkService.isBookmarked(articleId) {
+                                UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                            } else {
+                                UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+                            }
+                        }) {
+                            Image(systemName: bookmarkService.isBookmarked(articleId) ? "bookmark.fill" : "bookmark")
+                                .font(.system(size: 16, weight: .semibold))
+                                .foregroundColor(bookmarkService.isBookmarked(articleId) ? DesignSystem.Colors.primary : DesignSystem.Colors.secondary)
+                        }
+                        .buttonStyle(PlainButtonStyle())
                     }
                 }
                 .padding(DesignSystem.Spacing.lg)

@@ -24,11 +24,27 @@ class BookmarkService: ObservableObject {
 
     private let bookmarksKey = "bookmarkedArticles"        // IDs persistence key
     private let articlesKey = "bookmarkedArticleDetails"    // Details persistence key
+    private let toastShownKey = "hasShownBookmarkToast"    // First-time toast flag
 
     /// Initializes service and loads persisted bookmarks
     init() {
         loadBookmarks()
         loadArticleDetails()
+    }
+
+    // MARK: - First-Time Bookmark Experience
+
+    /// Checks if the user has bookmarked an article before
+    /// Used to show first-time bookmark toast notification
+    /// - Returns: True if user has bookmarked at least once
+    func hasUserBookmarkedBefore() -> Bool {
+        return UserDefaults.standard.bool(forKey: toastShownKey)
+    }
+
+    /// Marks that the user has seen the first-time bookmark toast
+    /// Should be called after showing the toast for the first time
+    func markFirstBookmarkSeen() {
+        UserDefaults.standard.set(true, forKey: toastShownKey)
     }
 
     /// Checks if an article is currently bookmarked

@@ -9,6 +9,7 @@
 /* Begin PBXBuildFile section */
 		1971354BD68D4A9F9FF7ED51 /* MockDataService.swift in Sources */ = {isa = PBXBuildFile; fileRef = E45B3487EB8549E2911E290A /* MockDataService.swift */; };
 		92D60E1598A04EEE8F8F3E6C /* DataMapper.swift in Sources */ = {isa = PBXBuildFile; fileRef = CF17478A47FA4148A05FA0D0 /* DataMapper.swift */; };
+		B106AC512ECF193F00537A42 /* NotificationAndSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B106AC502ECF193F00537A42 /* NotificationAndSettingsView.swift */; };
 		B12F5BBB2E1BD4AB00DD29F6 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = B14BEA062E1694640083B187 /* Assets.xcassets */; };
 		B14BEABC2E16B64B0083B187 /* NavigationComponents.swift in Sources */ = {isa = PBXBuildFile; fileRef = B14BEAA22E16B64B0083B187 /* NavigationComponents.swift */; };
 		B14BEABD2E16B64B0083B187 /* AddStockView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B14BEAB12E16B64B0083B187 /* AddStockView.swift */; };
@@ -48,8 +49,7 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
-		E45B3487EB8549E2911E290A /* MockDataService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MockDataService.swift; sourceTree = "<group>"; };
-		CF17478A47FA4148A05FA0D0 /* DataMapper.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DataMapper.swift; sourceTree = "<group>"; };
+		B106AC502ECF193F00537A42 /* NotificationAndSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotificationAndSettingsView.swift; sourceTree = "<group>"; };
 		B12F5BB82E1BC8D200DD29F6 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		B14BDE8F2E1694640083B187 /* Entitlements-Simulated.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = "Entitlements-Simulated.plist"; sourceTree = "<group>"; };
 		B14BDE902E1694640083B187 /* FinanzNachrichten-Swift.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "FinanzNachrichten-Swift.h"; sourceTree = "<group>"; };
@@ -2080,6 +2080,8 @@
 		B1A7FEF42E8E6BB400C92D41 /* NewsListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NewsListView.swift; sourceTree = "<group>"; };
 		B1E354922E1BBF40005BE324 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		C4A1E0252B9F0A1200123456 /* FinanzNachrichten.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = FinanzNachrichten.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		CF17478A47FA4148A05FA0D0 /* DataMapper.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DataMapper.swift; sourceTree = "<group>"; };
+		E45B3487EB8549E2911E290A /* MockDataService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MockDataService.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -11686,7 +11688,7 @@
 			children = (
 				B14BE9F72E1694640083B187 /* BookmarkService.swift */,
 				B14BE9F82E1694640083B187 /* NotificationService.swift */,
-							E45B3487EB8549E2911E290A /* MockDataService.swift */,
+				E45B3487EB8549E2911E290A /* MockDataService.swift */,
 				CF17478A47FA4148A05FA0D0 /* DataMapper.swift */,
 			);
 			path = Services;
@@ -11786,6 +11788,7 @@
 		B14BEABB2E16B64B0083B187 /* Views */ = {
 			isa = PBXGroup;
 			children = (
+				B106AC502ECF193F00537A42 /* NotificationAndSettingsView.swift */,
 				B14BEAB12E16B64B0083B187 /* AddStockView.swift */,
 				B14BEAB22E16B64B0083B187 /* CalendarView.swift */,
 				B14BEAB32E16B64B0083B187 /* HomeView.swift */,
@@ -11911,6 +11914,7 @@
 				B1A7FEEF2E8D583E00C92D41 /* WatchlistModels.swift in Sources */,
 				B14BEABD2E16B64B0083B187 /* AddStockView.swift in Sources */,
 				B14BEABE2E16B64B0083B187 /* OnboardingView.swift in Sources */,
+				B106AC512ECF193F00537A42 /* NotificationAndSettingsView.swift in Sources */,
 				B14BEAC02E16B64B0083B187 /* MenuView.swift in Sources */,
 				B14BEAC12E16B64B0083B187 /* NavigationModels.swift in Sources */,
 				B14BEAC22E16B64B0083B187 /* NotificationModels.swift in Sources */,
@@ -11942,7 +11946,7 @@
 				B14BEAD12E16B64B0083B187 /* DSComponents.swift in Sources */,
 				B1A7FEF32E8D5D5300C92D41 /* CombinedWatchlistCard.swift in Sources */,
 				B14BEAD22E16B64B0083B187 /* DesignSystem.swift in Sources */,
-							1971354BD68D4A9F9FF7ED51 /* MockDataService.swift in Sources */,
+				1971354BD68D4A9F9FF7ED51 /* MockDataService.swift in Sources */,
 				92D60E1598A04EEE8F8F3E6C /* DataMapper.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -12075,7 +12079,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 2;
+				CURRENT_PROJECT_VERSION = 3;
 				DEVELOPMENT_TEAM = 26CCTZ665L;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
@@ -12111,7 +12115,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 2;
+				CURRENT_PROJECT_VERSION = 3;
 				DEVELOPMENT_TEAM = 26CCTZ665L;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;

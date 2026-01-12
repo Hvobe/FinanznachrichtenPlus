@@ -240,17 +240,31 @@ struct InterestChip: View {
     let title: String
     let isSelected: Bool
     let action: () -> Void
-    
+
     var body: some View {
         Button(action: action) {
             Text(title)
-                .font(.system(size: 16, weight: .medium))
-                .foregroundColor(isSelected ? .white : .black)
+                .font(DesignSystem.Typography.body1)
+                .fontWeight(.semibold)
+                .foregroundColor(isSelected ? .white : DesignSystem.Colors.onBackground)
                 .frame(maxWidth: .infinity)
-                .padding(.vertical, 16)
-                .background(isSelected ? Color.red : Color.gray.opacity(0.1))
-                .cornerRadius(12)
+                .padding(.vertical, DesignSystem.Spacing.lg)
+                .background(
+                    RoundedRectangle(cornerRadius: DesignSystem.CornerRadius.lg)
+                        .fill(isSelected ? DesignSystem.Colors.primary : DesignSystem.Colors.surface)
+                )
+                .overlay(
+                    RoundedRectangle(cornerRadius: DesignSystem.CornerRadius.lg)
+                        .stroke(isSelected ? DesignSystem.Colors.primary : DesignSystem.Colors.border, lineWidth: isSelected ? 0 : 1)
+                )
+                .shadow(
+                    color: isSelected ? DesignSystem.Colors.primary.opacity(0.3) : Color.black.opacity(0.05),
+                    radius: isSelected ? 8 : 4,
+                    x: 0,
+                    y: 2
+                )
         }
+        .buttonStyle(PlainButtonStyle())
     }
 }
 

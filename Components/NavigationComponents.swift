@@ -31,21 +31,14 @@ struct FNHeaderView: View {
 
     var body: some View {
         HStack {
-            // FN Logo
+            // FN Logo (left-aligned, minimalist)
             FNLogoView(size: 40)
 
-            VStack(alignment: .leading, spacing: 2) {
-                Text(greeting)
-                    .font(DesignSystem.Typography.title1)
-                    .foregroundColor(DesignSystem.Colors.onBackground)
-                // TODO: Add user nickname support when UserService is implemented
-                // Text("\(greeting), \(userService.nickname ?? "")")
-            }
-            
             Spacer()
-            
+
             HStack(spacing: DesignSystem.Spacing.xl) {
                 // Notification Bell with Badge
+                // Now opens combined view: Feed personalization + notifications
                 Button(action: {
                     showingNotifications = true
                 }) {
@@ -53,13 +46,13 @@ struct FNHeaderView: View {
                         Image(systemName: "bell.fill")
                             .font(.system(size: 24))
                             .foregroundColor(DesignSystem.Colors.onBackground.opacity(0.7))
-                        
+
                         if notificationService.unreadCount > 0 {
                             ZStack {
                                 Circle()
                                     .fill(DesignSystem.Colors.primary)
                                     .frame(width: 16, height: 16)
-                                
+
                                 Text("\(notificationService.unreadCount)")
                                     .font(.system(size: 10, weight: .bold))
                                     .foregroundColor(.white)
@@ -68,7 +61,7 @@ struct FNHeaderView: View {
                         }
                     }
                 }
-                
+
                 // Search Icon
                 Button(action: {
                     showingSearch = true
@@ -90,7 +83,7 @@ struct FNHeaderView: View {
             SearchView(isPresented: $showingSearch)
         }
         .sheet(isPresented: $showingNotifications) {
-            NotificationView(isPresented: $showingNotifications, notificationService: notificationService)
+            NotificationAndSettingsView(isPresented: $showingNotifications, notificationService: notificationService)
         }
     }
 }
@@ -103,7 +96,7 @@ struct BottomNavigationView: View {
     var body: some View {
         VStack(spacing: 0) {
             Spacer()
-            
+
             ZStack {
                 // Glassmorphic Background - less transparent
                 RoundedRectangle(cornerRadius: 24)
@@ -112,7 +105,7 @@ struct BottomNavigationView: View {
                         RoundedRectangle(cornerRadius: 24)
                             .stroke(Color.white.opacity(0.3), lineWidth: 0.5)
                     )
-                
+
                 // Navigation Items
                 HStack(spacing: 0) {
                     BottomNavItem(icon: "house.fill", title: "HOME", isSelected: selectedTab == 0)
@@ -149,11 +142,12 @@ struct BottomNavigationView: View {
                 .padding(.horizontal, DesignSystem.Spacing.sm)
                 .padding(.vertical, DesignSystem.Spacing.md)
             }
-            .frame(height: 80)
+            .frame(height: 70)
             .padding(.horizontal, DesignSystem.Spacing.lg)
-            .padding(.bottom, DesignSystem.Spacing.sm)
+            .padding(.bottom, DesignSystem.Spacing.xl)
             .shadow(color: Color.black.opacity(0.15), radius: 20, x: 0, y: 10)
         }
+        .ignoresSafeArea(.keyboard)
     }
 }
 
@@ -262,6 +256,84 @@ struct WatchlistSelectorCard: View {
             .shadow(color: DesignSystem.Shadows.card, radius: DesignSystem.Shadows.cardRadius, x: 0, y: 2)
         }
         .buttonStyle(PlainButtonStyle())
+    }
+}
+
+// MARK: - Top Tab Bar
+
+/// Horizontal scrollable tab bar for content filtering (e.g., "Für dich", "Top Nachrichten", "Technik")
+/// Uses glassmorphic design matching FNHeaderView and BottomNavigationView
+struct TopTabBar: View {
+    let tabs: [String]
+    @Binding var selectedTab: String
+    @Namespace private var tabAnimation
+
+    var body: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            ScrollViewReader { proxy in
+                HStack(spacing: DesignSystem.Spacing.sm) {
+                    ForEach(tabs, id: \.self) { tab in
+                        TopTabItem(
+                            title: tab,
+                            isSelected: selectedTab == tab,
+                            namespace: tabAnimation
+                        )
+                        .onTapGesture {
+                            withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                                selectedTab = tab
+                            }
+                        }
+                        .id(tab)
+                    }
+                }
+                .padding(.horizontal, DesignSystem.Spacing.lg)
+                .padding(.vertical, DesignSystem.Spacing.md)
+                .onChange(of: selectedTab) { newTab in
+                    withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                        proxy.scrollTo(newTab, anchor: .center)
+                    }
+                }
+            }
+        }
+        .background(
+            // Light background with subtle shadow
+            Rectangle()
+                .fill(DesignSystem.Colors.surface)
+                .overlay(
+                    Rectangle()
+                        .fill(Color.black.opacity(0.05))
+                        .frame(height: 1),
+                    alignment: .bottom
+                )
+        )
+    }
+}
+
+// MARK: - Top Tab Item
+
+struct TopTabItem: View {
+    let title: String
+    let isSelected: Bool
+    let namespace: Namespace.ID
+
+    var body: some View {
+        Text(title)
+            .font(DesignSystem.Typography.body2)
+            .fontWeight(isSelected ? .semibold : .regular)
+            .foregroundColor(isSelected ? DesignSystem.Colors.primary : DesignSystem.Colors.secondary)
+            .lineLimit(1)
+            .padding(.horizontal, DesignSystem.Spacing.lg)
+            .padding(.vertical, DesignSystem.Spacing.sm)
+            .background(
+                ZStack {
+                    if isSelected {
+                        Capsule()
+                            .fill(DesignSystem.Colors.primary.opacity(0.12))
+                            .matchedGeometryEffect(id: "selectedTab", in: namespace)
+                    }
+                }
+            )
+            .animation(.spring(response: 0.3, dampingFraction: 0.7), value: isSelected)
     }
 }
 
